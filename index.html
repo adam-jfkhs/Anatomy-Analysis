@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Body Diagnostic Tool</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Body Diagnostic Tool</h1>
+            <p class="subtitle">Interactive Anatomy & Symptom Analysis</p>
+        </header>
+
+        <div class="disclaimer">
+            <strong>Medical Disclaimer:</strong> This tool is for educational and informational purposes only.
+            It is NOT a substitute for professional medical advice, diagnosis, or treatment.
+            Always consult a qualified healthcare provider for medical concerns.
+        </div>
+
+        <main class="main-content">
+            <!-- Left Panel: Body Map -->
+            <section class="body-map-section">
+                <h2>Interactive Body Map</h2>
+                <p class="instructions">Click on a body region to learn about organs and potential conditions</p>
+
+                <div class="body-container">
+                    <svg viewBox="0 0 200 450" class="body-svg" id="bodyMap">
+                        <!-- Head -->
+                        <ellipse cx="100" cy="35" rx="30" ry="35" class="body-part" data-region="head" />
+
+                        <!-- Neck -->
+                        <rect x="88" y="68" width="24" height="20" class="body-part" data-region="neck" />
+
+                        <!-- Shoulders -->
+                        <ellipse cx="55" cy="95" rx="20" ry="12" class="body-part" data-region="left-shoulder" />
+                        <ellipse cx="145" cy="95" rx="20" ry="12" class="body-part" data-region="right-shoulder" />
+
+                        <!-- Chest/Torso -->
+                        <rect x="60" y="88" width="80" height="70" rx="10" class="body-part" data-region="chest" />
+
+                        <!-- Abdomen -->
+                        <rect x="65" y="158" width="70" height="60" rx="5" class="body-part" data-region="abdomen" />
+
+                        <!-- Pelvis -->
+                        <path d="M65 218 Q100 250 135 218 L130 240 Q100 260 70 240 Z" class="body-part" data-region="pelvis" />
+
+                        <!-- Left Arm -->
+                        <rect x="30" y="100" width="18" height="70" rx="8" class="body-part" data-region="left-arm" />
+                        <rect x="28" y="170" width="16" height="65" rx="6" class="body-part" data-region="left-forearm" />
+                        <ellipse cx="36" cy="245" rx="12" ry="15" class="body-part" data-region="left-hand" />
+
+                        <!-- Right Arm -->
+                        <rect x="152" y="100" width="18" height="70" rx="8" class="body-part" data-region="right-arm" />
+                        <rect x="156" y="170" width="16" height="65" rx="6" class="body-part" data-region="right-forearm" />
+                        <ellipse cx="164" cy="245" rx="12" ry="15" class="body-part" data-region="right-hand" />
+
+                        <!-- Left Leg -->
+                        <rect x="68" y="245" width="25" height="90" rx="10" class="body-part" data-region="left-thigh" />
+                        <rect x="70" y="335" width="22" height="80" rx="8" class="body-part" data-region="left-leg" />
+                        <ellipse cx="81" cy="425" rx="15" ry="10" class="body-part" data-region="left-foot" />
+
+                        <!-- Right Leg -->
+                        <rect x="107" y="245" width="25" height="90" rx="10" class="body-part" data-region="right-thigh" />
+                        <rect x="108" y="335" width="22" height="80" rx="8" class="body-part" data-region="right-leg" />
+                        <ellipse cx="119" cy="425" rx="15" ry="10" class="body-part" data-region="right-foot" />
+                    </svg>
+
+                    <div class="body-labels">
+                        <span class="label" style="top: 5%; left: 50%;">Head</span>
+                        <span class="label" style="top: 18%; left: 50%;">Neck</span>
+                        <span class="label" style="top: 28%; left: 50%;">Chest</span>
+                        <span class="label" style="top: 42%; left: 50%;">Abdomen</span>
+                        <span class="label" style="top: 52%; left: 50%;">Pelvis</span>
+                    </div>
+                </div>
+
+                <div class="view-toggle">
+                    <button class="toggle-btn active" data-view="external">External View</button>
+                    <button class="toggle-btn" data-view="organs">Internal Organs</button>
+                </div>
+            </section>
+
+            <!-- Center Panel: Information Display -->
+            <section class="info-section">
+                <div class="tabs">
+                    <button class="tab-btn active" data-tab="region-info">Region Info</button>
+                    <button class="tab-btn" data-tab="organs">Organs</button>
+                    <button class="tab-btn" data-tab="diseases">Conditions</button>
+                </div>
+
+                <div class="tab-content" id="tabContent">
+                    <div class="tab-pane active" id="region-info">
+                        <div class="placeholder-message">
+                            <span class="icon">👆</span>
+                            <p>Click on a body region to see detailed information about the anatomy and functions of that area.</p>
+                        </div>
+                    </div>
+                    <div class="tab-pane" id="organs">
+                        <h3>Organs Database</h3>
+                        <div class="organ-list" id="organList"></div>
+                    </div>
+                    <div class="tab-pane" id="diseases">
+                        <h3>Conditions Database</h3>
+                        <div class="disease-list" id="diseaseList"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Right Panel: Symptom Checker -->
+            <section class="symptom-section">
+                <h2>Symptom Checker</h2>
+
+                <div class="query-form">
+                    <label for="symptomInput">Describe your symptoms:</label>
+                    <textarea
+                        id="symptomInput"
+                        placeholder="Example: I have a sharp pain in my upper right abdomen that gets worse after eating fatty foods. I also feel nauseous..."
+                        rows="4"
+                    ></textarea>
+
+                    <div class="location-selector">
+                        <label>Affected areas (select all that apply):</label>
+                        <div class="location-chips" id="locationChips">
+                            <button class="chip" data-location="head">Head</button>
+                            <button class="chip" data-location="neck">Neck</button>
+                            <button class="chip" data-location="chest">Chest</button>
+                            <button class="chip" data-location="abdomen">Abdomen</button>
+                            <button class="chip" data-location="pelvis">Pelvis</button>
+                            <button class="chip" data-location="back">Back</button>
+                            <button class="chip" data-location="arms">Arms</button>
+                            <button class="chip" data-location="legs">Legs</button>
+                            <button class="chip" data-location="joints">Joints</button>
+                            <button class="chip" data-location="skin">Skin</button>
+                        </div>
+                    </div>
+
+                    <div class="symptom-chips">
+                        <label>Common symptoms (click to add):</label>
+                        <div class="common-symptoms" id="commonSymptoms">
+                            <button class="symptom-chip" data-symptom="pain">Pain</button>
+                            <button class="symptom-chip" data-symptom="swelling">Swelling</button>
+                            <button class="symptom-chip" data-symptom="fatigue">Fatigue</button>
+                            <button class="symptom-chip" data-symptom="fever">Fever</button>
+                            <button class="symptom-chip" data-symptom="nausea">Nausea</button>
+                            <button class="symptom-chip" data-symptom="dizziness">Dizziness</button>
+                            <button class="symptom-chip" data-symptom="numbness">Numbness</button>
+                            <button class="symptom-chip" data-symptom="weakness">Weakness</button>
+                            <button class="symptom-chip" data-symptom="shortness of breath">Shortness of Breath</button>
+                            <button class="symptom-chip" data-symptom="headache">Headache</button>
+                        </div>
+                    </div>
+
+                    <button class="analyze-btn" id="analyzeBtn">
+                        <span class="btn-icon">🔍</span>
+                        Analyze Symptoms
+                    </button>
+                </div>
+
+                <div class="results-container" id="resultsContainer">
+                    <h3>Possible Conditions</h3>
+                    <div class="results-disclaimer">
+                        These suggestions are based on symptom matching and are NOT a diagnosis.
+                        Please consult a healthcare professional.
+                    </div>
+                    <div class="results-list" id="resultsList"></div>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p>Body Diagnostic Tool - For Educational Purposes Only</p>
+            <p>Always seek professional medical advice for health concerns.</p>
+        </footer>
+    </div>
+
+    <script src="data/organs.js"></script>
+    <script src="data/diseases.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
