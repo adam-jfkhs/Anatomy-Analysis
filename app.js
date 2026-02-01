@@ -1,6 +1,11 @@
 /**
- * Body Diagnostic Tool - Main Application
- * Handles body map interaction, symptom analysis, and condition matching
+ * Body Diagnostic Tool - Main Application v2.0
+ *
+ * Improved with:
+ * - Weighted symptom scoring
+ * - Time course matching (acute vs chronic)
+ * - Primary vs secondary region distinction
+ * - Explainability panel showing why conditions matched
  */
 
 class BodyDiagnosticApp {
@@ -243,6 +248,7 @@ class BodyDiagnosticApp {
                 <button class="chip" data-filter="Digestive">Digestive</button>
                 <button class="chip" data-filter="Neurological">Brain</button>
                 <button class="chip" data-filter="Musculoskeletal">Muscles/Bones</button>
+                <button class="chip" data-filter="Endocrine">Endocrine</button>
             </div>
             <div class="disease-items"></div>
         `;
@@ -254,10 +260,17 @@ class BodyDiagnosticApp {
             card.className = 'disease-card';
             card.dataset.diseaseId = id;
             card.dataset.category = disease.category;
+
+            // Get symptom list from object keys
+            const symptomCount = Object.keys(disease.symptoms).length;
+
             card.innerHTML = `
                 <h4>${disease.name}</h4>
                 <p>${disease.description.substring(0, 80)}...</p>
-                <span class="severity ${disease.severity}">${disease.severity}</span>
+                <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px;">
+                    <span class="severity ${disease.severity}">${disease.severity}</span>
+                    <span class="time-course-badge ${disease.timeCourse}">${disease.timeCourse}</span>
+                </div>
             `;
 
             card.addEventListener('click', () => this.showDiseaseDetail(id));
@@ -286,10 +299,13 @@ class BodyDiagnosticApp {
 
         diseaseItems.querySelectorAll('.disease-card').forEach(card => {
             const disease = DISEASES[card.dataset.diseaseId];
+            const symptoms = Object.keys(disease.symptoms);
             const matchesSearch = disease.name.toLowerCase().includes(searchQuery) ||
                                  disease.description.toLowerCase().includes(searchQuery) ||
-                                 disease.symptoms.some(s => s.includes(searchQuery));
-            const matchesCategory = categoryFilter === 'all' || disease.category === categoryFilter;
+                                 symptoms.some(s => s.includes(searchQuery));
+            const matchesCategory = categoryFilter === 'all' ||
+                                   disease.category === categoryFilter ||
+                                   disease.category.includes(categoryFilter);
 
             card.style.display = (matchesSearch && matchesCategory) ? 'block' : 'none';
         });
@@ -299,9 +315,19 @@ class BodyDiagnosticApp {
         const disease = DISEASES[diseaseId];
         if (!disease) return;
 
-        const symptoms = disease.symptoms.join('</li><li>');
+        // Get symptoms with weights
+        const symptomsWithWeights = Object.entries(disease.symptoms)
+            .sort((a, b) => b[1] - a[1]) // Sort by weight descending
+            .map(([symptom, weight]) => {
+                const weightLabel = weight === 3 ? 'highly specific' : weight === 2 ? 'suggestive' : 'common';
+                const weightClass = weight === 3 ? 'weight-high' : weight === 2 ? 'weight-medium' : 'weight-low';
+                return `<li><span class="symptom-weight ${weightClass}">${weight}</span> ${symptom}</li>`;
+            })
+            .join('');
+
         const riskFactors = disease.riskFactors.join('</li><li>');
-        const affectedAreas = disease.affectedAreas.join(', ');
+        const primaryRegions = disease.primaryRegions.length > 0 ? disease.primaryRegions.join(', ') : 'None specific';
+        const secondaryRegions = disease.secondaryRegions.length > 0 ? disease.secondaryRegions.join(', ') : 'None';
 
         this.showModal(`
             <div class="modal-header">
@@ -310,20 +336,25 @@ class BodyDiagnosticApp {
             </div>
             <div class="modal-content">
                 <section>
-                    <h3>Category</h3>
-                    <p>${disease.category} - <span class="severity ${disease.severity}">${disease.severity}</span></p>
+                    <h3>Classification</h3>
+                    <p>
+                        <strong>Category:</strong> ${disease.category}<br>
+                        <strong>Severity:</strong> <span class="severity ${disease.severity}">${disease.severity}</span><br>
+                        <strong>Time Course:</strong> <span class="time-course-badge ${disease.timeCourse}">${disease.timeCourse}</span>
+                    </p>
                 </section>
                 <section>
                     <h3>Description</h3>
                     <p>${disease.description}</p>
                 </section>
                 <section>
-                    <h3>Common Symptoms</h3>
-                    <ul><li>${symptoms}</li></ul>
+                    <h3>Symptoms <small style="color: #6e84a3;">(weighted by specificity: 3=highly specific, 2=suggestive, 1=common)</small></h3>
+                    <ul class="weighted-symptoms">${symptomsWithWeights}</ul>
                 </section>
                 <section>
                     <h3>Affected Body Areas</h3>
-                    <p>${affectedAreas}</p>
+                    <p><strong>Primary:</strong> ${primaryRegions}</p>
+                    <p><strong>Secondary:</strong> ${secondaryRegions}</p>
                 </section>
                 <section>
                     <h3>Risk Factors</h3>
@@ -487,7 +518,7 @@ class BodyDiagnosticApp {
         });
     }
 
-    // ==================== Symptom Analysis ====================
+    // ==================== IMPROVED Symptom Analysis ====================
 
     analyzeSymptoms() {
         const symptomText = document.getElementById('symptomInput').value.toLowerCase();
@@ -502,97 +533,163 @@ class BodyDiagnosticApp {
         this.displayResults(results);
     }
 
+    /**
+     * IMPROVED matching algorithm with:
+     * - Weighted symptom scoring
+     * - Time course matching
+     * - Primary/secondary region distinction
+     * - Detailed match explanations
+     */
     matchConditions(symptomText, locations) {
         const results = [];
+        const textAnalysis = this.analyzeText(symptomText);
 
         Object.entries(DISEASES).forEach(([id, disease]) => {
-            let score = 0;
-            const matchedSymptoms = [];
-            const matchedLocations = [];
+            let totalScore = 0;
+            let maxPossibleScore = 0;
+            const matchDetails = {
+                symptoms: [],
+                regions: [],
+                timeCourseMatch: false,
+                timeCourseBonus: 0,
+                timePenalty: 0
+            };
 
-            // Check symptom matches
-            disease.symptoms.forEach(symptom => {
+            // ========== WEIGHTED SYMPTOM MATCHING ==========
+            Object.entries(disease.symptoms).forEach(([symptom, weight]) => {
+                const symptomLower = symptom.toLowerCase();
+                maxPossibleScore += weight * 10; // Max possible per symptom
+
                 // Direct match
-                if (symptomText.includes(symptom.toLowerCase())) {
-                    score += 10;
-                    matchedSymptoms.push(symptom);
+                if (symptomText.includes(symptomLower)) {
+                    const score = weight * 10;
+                    totalScore += score;
+                    matchDetails.symptoms.push({
+                        symptom,
+                        weight,
+                        score,
+                        matchType: 'direct'
+                    });
                 } else {
                     // Check keyword variations
+                    let matched = false;
                     for (const [key, variations] of Object.entries(SYMPTOM_KEYWORDS)) {
-                        if (symptom.toLowerCase().includes(key)) {
+                        if (symptomLower.includes(key) || key.includes(symptomLower.split(' ')[0])) {
                             for (const variation of variations) {
                                 if (symptomText.includes(variation)) {
-                                    score += 7;
-                                    if (!matchedSymptoms.includes(symptom)) {
-                                        matchedSymptoms.push(symptom);
-                                    }
+                                    const score = weight * 7; // Partial match gets 70%
+                                    totalScore += score;
+                                    matchDetails.symptoms.push({
+                                        symptom,
+                                        weight,
+                                        score,
+                                        matchType: 'keyword',
+                                        matchedKeyword: variation
+                                    });
+                                    matched = true;
                                     break;
                                 }
                             }
                         }
+                        if (matched) break;
                     }
                 }
             });
 
-            // Check location matches
-            if (locations.length > 0) {
-                disease.affectedAreas.forEach(area => {
-                    const areaLower = area.toLowerCase();
+            // ========== TIME COURSE MATCHING ==========
+            if (textAnalysis.timeCourse !== 'unknown' && disease.timeCourse !== 'either') {
+                if (textAnalysis.timeCourse === disease.timeCourse) {
+                    // Bonus for matching time course
+                    const timeBonus = 15;
+                    totalScore += timeBonus;
+                    matchDetails.timeCourseMatch = true;
+                    matchDetails.timeCourseBonus = timeBonus;
+                } else {
+                    // Penalty for mismatched time course (e.g., acute disease for chronic symptoms)
+                    const timePenalty = 20;
+                    totalScore -= timePenalty;
+                    matchDetails.timePenalty = timePenalty;
+                }
+            }
 
+            // ========== REGION MATCHING WITH PRIMARY/SECONDARY ==========
+            if (locations.length > 0) {
+                // Check primary regions (higher weight)
+                disease.primaryRegions.forEach(region => {
+                    const regionLower = region.toLowerCase();
                     locations.forEach(location => {
                         const aliases = LOCATION_ALIASES[location] || [location];
-                        if (aliases.some(alias => areaLower.includes(alias) || alias.includes(areaLower))) {
-                            score += 15;
-                            if (!matchedLocations.includes(area)) {
-                                matchedLocations.push(area);
+                        if (aliases.some(alias => regionLower.includes(alias) || alias.includes(regionLower))) {
+                            const score = 20; // Primary region match
+                            totalScore += score;
+                            if (!matchDetails.regions.find(r => r.region === region)) {
+                                matchDetails.regions.push({
+                                    region,
+                                    type: 'primary',
+                                    score
+                                });
+                            }
+                        }
+                    });
+                });
+
+                // Check secondary regions (lower weight)
+                disease.secondaryRegions.forEach(region => {
+                    const regionLower = region.toLowerCase();
+                    locations.forEach(location => {
+                        const aliases = LOCATION_ALIASES[location] || [location];
+                        if (aliases.some(alias => regionLower.includes(alias) || alias.includes(regionLower))) {
+                            const score = 8; // Secondary region match
+                            totalScore += score;
+                            if (!matchDetails.regions.find(r => r.region === region)) {
+                                matchDetails.regions.push({
+                                    region,
+                                    type: 'secondary',
+                                    score
+                                });
                             }
                         }
                     });
                 });
             }
 
-            // Additional text analysis for specific keywords
-            const textAnalysis = this.analyzeText(symptomText);
+            // Only include if there's a meaningful match
+            if (totalScore > 0 && matchDetails.symptoms.length > 0) {
+                // Calculate confidence level
+                const symptomScore = matchDetails.symptoms.reduce((sum, s) => sum + s.score, 0);
+                const confidence = this.calculateConfidence(totalScore, maxPossibleScore, matchDetails);
 
-            // Check for severity indicators
-            if (textAnalysis.severity === 'severe' && disease.severity === 'severe') {
-                score += 5;
-            }
-
-            // Check for duration indicators
-            if (textAnalysis.duration === 'chronic' &&
-                (disease.name.includes('Chronic') || disease.category === 'Musculoskeletal')) {
-                score += 5;
-            }
-
-            if (score > 0) {
                 results.push({
                     id,
                     disease,
-                    score,
-                    matchedSymptoms,
-                    matchedLocations,
-                    matchPercentage: Math.min(100, Math.round((score / (disease.symptoms.length * 10)) * 100))
+                    totalScore,
+                    maxPossibleScore,
+                    matchDetails,
+                    confidence,
+                    explanation: this.generateExplanation(matchDetails, disease, textAnalysis)
                 });
             }
         });
 
-        // Sort by score descending
-        results.sort((a, b) => b.score - a.score);
+        // Sort by total score descending
+        results.sort((a, b) => b.totalScore - a.totalScore);
 
         // Return top 5 results
         return results.slice(0, 5);
     }
 
+    /**
+     * Analyze input text for time course and other factors
+     */
     analyzeText(text) {
         const analysis = {
             severity: 'unknown',
-            duration: 'unknown'
+            timeCourse: 'unknown'
         };
 
         // Severity indicators
-        const severeWords = ['severe', 'intense', 'extreme', 'unbearable', 'worst', 'excruciating', 'sharp', 'stabbing'];
-        const mildWords = ['mild', 'slight', 'minor', 'little', 'occasional'];
+        const severeWords = ['severe', 'intense', 'extreme', 'unbearable', 'worst', 'excruciating', 'sharp', 'stabbing', 'terrible'];
+        const mildWords = ['mild', 'slight', 'minor', 'little', 'occasional', 'sometimes'];
 
         if (severeWords.some(word => text.includes(word))) {
             analysis.severity = 'severe';
@@ -600,19 +697,97 @@ class BodyDiagnosticApp {
             analysis.severity = 'mild';
         }
 
-        // Duration indicators
-        const chronicWords = ['chronic', 'long-term', 'months', 'years', 'ongoing', 'persistent', 'always'];
-        const acuteWords = ['sudden', 'just started', 'new', 'recent', 'today', 'yesterday'];
+        // Time course detection using keywords from diseases.js
+        const acuteKeywords = TIME_COURSE_KEYWORDS?.acute || ['sudden', 'suddenly', 'just started', 'started today', 'started yesterday', 'new', 'recent', 'acute', 'came on fast', 'woke up with'];
+        const chronicKeywords = TIME_COURSE_KEYWORDS?.chronic || ['chronic', 'long-term', 'for months', 'for years', 'for weeks', 'ongoing', 'persistent', 'always', 'constant', 'recurring', 'comes and goes', 'been having'];
 
-        if (chronicWords.some(word => text.includes(word))) {
-            analysis.duration = 'chronic';
-        } else if (acuteWords.some(word => text.includes(word))) {
-            analysis.duration = 'acute';
+        if (chronicKeywords.some(word => text.includes(word))) {
+            analysis.timeCourse = 'chronic';
+        } else if (acuteKeywords.some(word => text.includes(word))) {
+            analysis.timeCourse = 'acute';
         }
 
         return analysis;
     }
 
+    /**
+     * Calculate confidence level based on match quality
+     */
+    calculateConfidence(totalScore, maxPossible, matchDetails) {
+        // Weight factors
+        const symptomMatchRatio = totalScore / Math.max(maxPossible, 1);
+        const hasHighWeightSymptoms = matchDetails.symptoms.some(s => s.weight === 3);
+        const hasPrimaryRegion = matchDetails.regions.some(r => r.type === 'primary');
+        const hasTimeCourseMatch = matchDetails.timeCourseMatch;
+
+        let confidenceScore = symptomMatchRatio * 50; // Base: up to 50 points from symptom ratio
+
+        if (hasHighWeightSymptoms) confidenceScore += 20;
+        if (hasPrimaryRegion) confidenceScore += 15;
+        if (hasTimeCourseMatch) confidenceScore += 15;
+
+        // Apply penalty if applicable
+        if (matchDetails.timePenalty > 0) {
+            confidenceScore -= 15;
+        }
+
+        // Determine confidence level
+        if (confidenceScore >= 60) return 'high';
+        if (confidenceScore >= 35) return 'moderate';
+        return 'low';
+    }
+
+    /**
+     * Generate human-readable explanation for why a condition matched
+     */
+    generateExplanation(matchDetails, disease, textAnalysis) {
+        const parts = [];
+
+        // Symptom explanations with weights
+        if (matchDetails.symptoms.length > 0) {
+            const symptomsByWeight = {
+                3: matchDetails.symptoms.filter(s => s.weight === 3),
+                2: matchDetails.symptoms.filter(s => s.weight === 2),
+                1: matchDetails.symptoms.filter(s => s.weight === 1)
+            };
+
+            if (symptomsByWeight[3].length > 0) {
+                parts.push(`<strong>Highly specific symptoms (weight 3):</strong> ${symptomsByWeight[3].map(s => s.symptom).join(', ')}`);
+            }
+            if (symptomsByWeight[2].length > 0) {
+                parts.push(`<strong>Suggestive symptoms (weight 2):</strong> ${symptomsByWeight[2].map(s => s.symptom).join(', ')}`);
+            }
+            if (symptomsByWeight[1].length > 0) {
+                parts.push(`<strong>Common symptoms (weight 1):</strong> ${symptomsByWeight[1].map(s => s.symptom).join(', ')}`);
+            }
+        }
+
+        // Region explanations
+        if (matchDetails.regions.length > 0) {
+            const primaryRegions = matchDetails.regions.filter(r => r.type === 'primary');
+            const secondaryRegions = matchDetails.regions.filter(r => r.type === 'secondary');
+
+            if (primaryRegions.length > 0) {
+                parts.push(`<strong>Primary affected area match:</strong> ${primaryRegions.map(r => r.region).join(', ')}`);
+            }
+            if (secondaryRegions.length > 0) {
+                parts.push(`<strong>Secondary area match:</strong> ${secondaryRegions.map(r => r.region).join(', ')}`);
+            }
+        }
+
+        // Time course explanation
+        if (matchDetails.timeCourseMatch) {
+            parts.push(`<strong>Time course match:</strong> Your symptoms suggest ${textAnalysis.timeCourse} onset, which matches this ${disease.timeCourse} condition (+15 points)`);
+        } else if (matchDetails.timePenalty > 0) {
+            parts.push(`<strong>Time course mismatch:</strong> Your symptoms suggest ${textAnalysis.timeCourse} onset, but this is typically a ${disease.timeCourse} condition (-20 points)`);
+        }
+
+        return parts.join('<br>');
+    }
+
+    /**
+     * Display results with improved explainability
+     */
     displayResults(results) {
         const container = document.getElementById('resultsContainer');
         const list = document.getElementById('resultsList');
@@ -625,18 +800,50 @@ class BodyDiagnosticApp {
                 </div>
             `;
         } else {
-            list.innerHTML = results.map(result => `
+            list.innerHTML = results.map(result => {
+                const confidenceClass = result.confidence === 'high' ? 'confidence-high' :
+                                       result.confidence === 'moderate' ? 'confidence-moderate' : 'confidence-low';
+                const confidenceLabel = result.confidence === 'high' ? 'High Relevance' :
+                                       result.confidence === 'moderate' ? 'Moderate Relevance' : 'Low Relevance';
+
+                // Calculate display percentage based on symptom matches
+                const matchedSymptomScore = result.matchDetails.symptoms.reduce((sum, s) => sum + s.score, 0);
+                const maxSymptomScore = result.matchDetails.symptoms.reduce((sum, s) => sum + (s.weight * 10), 0);
+
+                return `
                 <div class="result-card" data-disease="${result.id}">
                     <h4>
                         ${result.disease.name}
-                        <span class="match-score">${result.matchPercentage}% match</span>
+                        <span class="confidence-badge ${confidenceClass}">${confidenceLabel}</span>
                     </h4>
+
+                    <div class="time-course-indicator">
+                        <span class="time-course-badge ${result.disease.timeCourse}">${result.disease.timeCourse}</span>
+                        <span class="severity ${result.disease.severity}">${result.disease.severity}</span>
+                    </div>
+
                     <p class="description">${result.disease.description}</p>
 
-                    ${result.matchedSymptoms.length > 0 ? `
-                        <div class="matched-symptoms">
+                    <!-- EXPLAINABILITY PANEL -->
+                    <div class="explainability-panel">
+                        <h5>Why this matched:</h5>
+                        <div class="explanation-content">
+                            ${result.explanation}
+                        </div>
+                    </div>
+
+                    <!-- Matched symptoms with weights -->
+                    ${result.matchDetails.symptoms.length > 0 ? `
+                        <div class="matched-symptoms-detailed">
                             <strong>Matched symptoms:</strong>
-                            ${result.matchedSymptoms.map(s => `<span class="matched-symptom">${s}</span>`).join('')}
+                            <div class="symptom-chips">
+                                ${result.matchDetails.symptoms.map(s => `
+                                    <span class="matched-symptom weight-${s.weight}">
+                                        <span class="weight-indicator">${s.weight}</span>
+                                        ${s.symptom}
+                                    </span>
+                                `).join('')}
+                            </div>
                         </div>
                     ` : ''}
 
@@ -645,7 +852,7 @@ class BodyDiagnosticApp {
                         ${result.disease.recommendation}
                     </div>
                 </div>
-            `).join('');
+            `}).join('');
 
             // Bind click events to result cards
             list.querySelectorAll('.result-card').forEach(card => {

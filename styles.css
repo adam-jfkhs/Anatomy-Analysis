@@ -547,6 +547,211 @@ section h2 {
     font-size: 0.75rem;
 }
 
+/* ==================== NEW v2.0 STYLES ==================== */
+
+/* Time Course Badges */
+.time-course-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: capitalize;
+}
+
+.time-course-badge.acute {
+    background: #ffeaa7;
+    color: #d68910;
+}
+
+.time-course-badge.chronic {
+    background: #d5f5e3;
+    color: #1e8449;
+}
+
+.time-course-badge.either {
+    background: #e8daef;
+    color: #7d3c98;
+}
+
+/* Confidence Badges */
+.confidence-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.confidence-badge.confidence-high {
+    background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+    color: white;
+}
+
+.confidence-badge.confidence-moderate {
+    background: linear-gradient(135deg, #f39c12 0%, #f1c40f 100%);
+    color: #5d4e37;
+}
+
+.confidence-badge.confidence-low {
+    background: linear-gradient(135deg, #95a5a6 0%, #bdc3c7 100%);
+    color: #2c3e50;
+}
+
+/* Time Course Indicator in Results */
+.time-course-indicator {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+/* Explainability Panel */
+.explainability-panel {
+    background: linear-gradient(135deg, #ebf5fb 0%, #d6eaf8 100%);
+    border: 1px solid #aed6f1;
+    border-radius: var(--radius-sm);
+    padding: 15px;
+    margin: 15px 0;
+}
+
+.explainability-panel h5 {
+    color: var(--primary-color);
+    margin: 0 0 10px 0;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.explainability-panel h5::before {
+    content: '💡';
+}
+
+.explanation-content {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    line-height: 1.7;
+}
+
+.explanation-content strong {
+    color: var(--text-primary);
+}
+
+/* Weighted Symptoms Display */
+.matched-symptoms-detailed {
+    margin: 15px 0;
+}
+
+.matched-symptoms-detailed strong {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 0.85rem;
+}
+
+.symptom-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.matched-symptom {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    background: #d4edda;
+    color: #155724;
+}
+
+.matched-symptom.weight-3 {
+    background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+    color: white;
+    font-weight: 600;
+}
+
+.matched-symptom.weight-2 {
+    background: linear-gradient(135deg, #3498db 0%, #5dade2 100%);
+    color: white;
+}
+
+.matched-symptom.weight-1 {
+    background: #ecf0f1;
+    color: #7f8c8d;
+}
+
+.weight-indicator {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.3);
+    font-size: 0.7rem;
+    font-weight: bold;
+}
+
+/* Symptom Weight in Modal */
+.weighted-symptoms {
+    list-style: none;
+    padding: 0;
+}
+
+.weighted-symptoms li {
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.weighted-symptoms li:last-child {
+    border-bottom: none;
+}
+
+.symptom-weight {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    font-size: 0.75rem;
+    font-weight: bold;
+    flex-shrink: 0;
+}
+
+.symptom-weight.weight-high {
+    background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+    color: white;
+}
+
+.symptom-weight.weight-medium {
+    background: linear-gradient(135deg, #3498db 0%, #5dade2 100%);
+    color: white;
+}
+
+.symptom-weight.weight-low {
+    background: #ecf0f1;
+    color: #7f8c8d;
+}
+
+/* Updated Result Card */
+.result-card h4 {
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.result-card .description {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    margin-bottom: 12px;
+    line-height: 1.5;
+}
+
 .result-card .description {
     color: var(--text-secondary);
     font-size: 0.9rem;
